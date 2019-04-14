@@ -19,6 +19,7 @@ defmodule Cyllab.People.User do
     user
     |> cast(attrs, [:name, :email, :confirmed])
     |> validate_required([:name, :email])
+    |> validate_format(:email, ~r/@/)
     |> unique_constraint(:email)
   end
 end

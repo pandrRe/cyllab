@@ -23,17 +23,110 @@ defmodule CyllabWeb.UserControllerTest do
                 password: "baidsidkbsadl",
                 type_id: 1,
             }
-        }
+        },
     ]
 
-    describe "Get users from endpoint" do
-        setup [:create_user]
+    @correct_credentials %{
+        name: "Michael Jackson",
+        email: "mike@example.com",
+        credentials: %{
+            access_handle: "mike_jackson",
+            password: "password1223",
+            password_confirmation: "password1223",
+            type_id: 1,
+        }
+    }
 
-        test "GET /", %{conn: conn} do
+    @incorrect_credentials1 %{
+        name: "Johnny Smith",
+        email: "johnny@example.com",
+        credentials: %{
+            access_handle: "johnny_smith",
+            password: "thisisawaaaaaaaaaaytolongpassword",
+            password_confirmation: "thisisawaaaaaaaaaaytolongpassword",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials2 %{
+        name: "Al de Baran",
+        email: "aldebaran@example.com",
+        credentials: %{
+            access_handle: "alde",
+            password: "baran",
+            password_confirmation: "baran",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials3 %{
+        name: "Fulaninho",
+        email: "fulaninho@example.com",
+        credentials: %{
+            access_handle: "fulaninho",
+            password: "fulaninho",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials4 %{
+        name: "Fulaninho",
+        email: "fulaninho@example.com",
+        credentials: %{
+            access_handle: "fulaninho",
+            password: "fulaninho",
+            password_confirmation: "wroooong",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials5 %{
+        email: "fulaninho@example.com",
+        credentials: %{
+            access_handle: "fulaninho",
+            password: "fulaninho",
+            password_confirmation: "fulaninho",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials6 %{
+        name: "fulaninho",
+        email: "fulaninhoatexample.com",
+        credentials: %{
+            access_handle: "fulaninho",
+            password: "fulaninho",
+            password_confirmation: "fulaninho",
+            type_id: 1,
+        }
+    }
+
+    @incorrect_credentials7 %{
+        name: "fulaninho",
+        email: "fulaninhoatexample.com",
+        credentials: %{
+            access_handle: "fulaninho",
+            password: "fulaninho",
+            password_confirmation: "fulaninho",
+            type_id: 99,
+        }
+    }
+
+    @incorrect_credentials8 %{
+        name: "fulaninho",
+        email: "fulaninhoatexample.com",
+        credentials: %{}
+    }
+
+
+    describe "Endpoint index." do
+        setup [:standard_credential_type, :create_users]
+
+        test "index/2", %{conn: conn} do
             response = conn |> get("/api/users") |> json_response(200)
-            assert length(response) === 1
+            assert length(response["body"]) === 2
             
-            response_map = Enum.at(response, 0)
+            response_map = Enum.at(response["body"], 0)
 
             assert match?(%{
                 "name" => "Joseph Joestar",
@@ -47,10 +140,142 @@ defmodule CyllabWeb.UserControllerTest do
         end
     end
 
-    defp create_user(_) do
+    describe "User sign up endpoint." do
+        setup [:standard_credential_type]
+
+        test "create/2 with correct credentials.", %{conn: conn} do
+            response = conn |> post("/api/users", @correct_credentials) |> json_response(200)
+
+            assert match?(%{
+                "access_handle" => "mike_jackson",
+                "type" => %{"type" => "Standard"},
+            }, response["body"])
+        end
+
+        test "create/2 with valid username but long password", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials1) |> json_response(400)
+
+            assert response === %{
+                "body" => %{"password" => ["should be at most 20 character(s)"]},
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with short username and short password", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials2) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "password" => ["should be at least 8 character(s)"],
+                    "access_handle" => ["should be at least 5 character(s)"],
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with missing password confirmation", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials3) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "password_confirmation" => ["can't be blank"],
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with wrong password confirmation", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials4) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "password_confirmation" => ["does not match confirmation"],
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with missing user fields", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials5) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "user" => %{"name" => ["can't be blank"]},
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with invalid email", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials6) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "user" => %{"email" => ["has invalid format"]},
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with non-existing credential type", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials7) |> json_response(400)
+
+            assert response === %{
+                "body" => "Credential type does not exist.",
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with missing credential fields", %{conn: conn} do
+            response = conn |> post("/api/users", @incorrect_credentials8) |> json_response(400)
+
+            assert response === %{
+                "body" => "Credential type does not exist.",
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with empty request body", %{conn: conn} do
+            response = conn |> post("/api/users", %{}) |> json_response(400)
+
+            assert response === %{
+                "body" => "Credential type does not exist.",
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with empty request body except for credential type id", %{conn: conn} do
+            response = conn |> post("/api/users", %{credentials: %{type_id: 1}}) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "access_handle" => ["can't be blank"],
+                    "password" => ["can't be blank"],
+                    "password_confirmation" => ["can't be blank"],
+                    "user" => %{"name" => ["can't be blank"], "email" => ["can't be blank"]},
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+    end
+
+    defp standard_credential_type(_) do
         Repo.insert!(%CredentialType{id: 1, type: "Standard"})
-        {:ok, user} = People.insert_user_with_credentials(@create_attrs)
-        {:ok, user: user}
+        :ok
+    end
+
+    defp create_users(_) do
+        Enum.each(@create_attrs, fn attrs -> People.insert_user_seed(attrs) end) 
     end
 end
   

@@ -35,11 +35,9 @@ defmodule Cyllab.People do
     @doc """
     Creates a new credentials schema from input data and associations.
     """
-    def new_credentials(%{credentials: credentials}, user, credential_type) do
+    def new_credentials(%{"credentials" => credentials}, user, credential_type) do
         %Credentials{}
-        |> Credentials.changeset(credentials)
-        |> Ecto.Changeset.put_assoc(:type, credential_type)
-        |> Ecto.Changeset.put_assoc(:user, user)
+        |> Credentials.changeset(credentials, credential_type, user)
     end
 
     @doc """
@@ -47,12 +45,31 @@ defmodule Cyllab.People do
     Returns {:ok, credentials} | {:error, changeset} | {:error, message}
     """
     def insert_user_with_credentials(input \\ %{}) do
-        credential_type = Repo.get(CredentialType, input.credentials.type_id)
+        credential_type = Repo.get(CredentialType, input["credentials"]["type_id"] || 0)
 
         if credential_type do
             user = new_user(input)
 
             new_credentials(input, user, credential_type) |> Repo.insert()
+        else
+            {:error, "Credential type does not exist."}
+        end
+    end
+
+    @doc """
+    Insert a new user without password encryption. For test purposes only!
+    """
+    def insert_user_seed(input) do
+        credential_type = Repo.get(CredentialType, input.credentials.type_id)
+
+        if credential_type do
+            user = new_user(input)
+
+            %Credentials{}
+            |> Credentials.test_changeset(input.credentials)
+            |> Ecto.Changeset.put_assoc(:type, credential_type)
+            |> Ecto.Changeset.put_assoc(:user, user)
+            |> Repo.insert!()
         else
             {:error, "Credential type does not exist."}
         end

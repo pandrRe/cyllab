@@ -22,11 +22,27 @@ defmodule Cyllab.People.Credentials do
   end
 
   @doc false
-  def changeset(credentials, attrs) do
+  def changeset(credentials, attrs, credential_type, user) do
+    changeset = credentials
+    |> cast(attrs, [:access_handle, :password])
+    |> validate_required([:access_handle, :password])
+    |> validate_length(:access_handle, min: 5, max: 20)
+    |> validate_length(:password, min: 8, max: 20)
+    |> validate_confirmation(:password, required: true)
+    |> put_assoc(:type, credential_type)
+    |> put_assoc(:user, user)
+    
+    if changeset.valid? do
+      encrypt_password(changeset)
+    else
+      changeset
+    end
+  end
+
+  def test_changeset(credentials, attrs) do
     credentials
     |> cast(attrs, [:access_handle, :password])
     |> validate_required([:access_handle, :password])
     |> validate_confirmation(:password)
-    |> encrypt_password()
   end
 end

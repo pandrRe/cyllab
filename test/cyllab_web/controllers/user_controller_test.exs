@@ -1,6 +1,8 @@
 defmodule CyllabWeb.UserControllerTest do
     use CyllabWeb.ConnCase
 
+    import Cyllab.People.Factory
+
     alias Cyllab.People
     alias Cyllab.Repo
     alias Cyllab.People.CredentialType
@@ -262,6 +264,39 @@ defmodule CyllabWeb.UserControllerTest do
                     "password" => ["can't be blank"],
                     "password_confirmation" => ["can't be blank"],
                     "user" => %{"name" => ["can't be blank"], "email" => ["can't be blank"]},
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with existing email on form", %{conn: conn} do
+            existing_user = insert(:user)
+            form_data = build(:signup_form, email: existing_user.email)
+
+            response = conn |> post("/api/users", form_data) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "user" => %{"email" => ["has already been taken"]},
+                },
+                "is_error" => true,
+                "status_code" => 400,
+            }
+        end
+
+        test "create/2 with existing access handle on form", %{conn: conn} do
+            existing_user = insert(:user)
+            form_data = put_in(
+                build(:signup_form).credentials.access_handle,
+                Enum.at(existing_user.credentials, 0).access_handle
+            )
+
+            response = conn |> post("/api/users", form_data) |> json_response(400)
+
+            assert response === %{
+                "body" => %{
+                    "access_handle" => ["has already been taken"],
                 },
                 "is_error" => true,
                 "status_code" => 400,

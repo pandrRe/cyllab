@@ -10,5 +10,6 @@ defmodule Cyllab.Repo.Migrations.CreateCredentials do
       timestamps()
     end
 
+    create unique_index(:credentials, [:access_handle], name: :credentials_access_index)
   end
 end

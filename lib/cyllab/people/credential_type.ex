@@ -7,7 +7,7 @@ defmodule Cyllab.People.CredentialType do
   @derive {Jason.Encoder, only: [:id, :type]}
   schema "credential_type" do
     field :type, :string
-    has_many :credentials, Credentials
+    has_many :credentials, Credentials, foreign_key: :type_id
   end
 
   @doc false
